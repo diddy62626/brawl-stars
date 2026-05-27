@@ -163,16 +163,46 @@ export default function GameScene({ brawlerId, mode }: GameSceneProps) {
       });
     };
 
+    const spawnGadgetEffect = (pos: BABYLON.Vector3) => {
+      // Expanding green ring
+      const ring = BABYLON.MeshBuilder.CreateTorus("gadget-ring", { diameter: 1, thickness: 0.2 }, scene);
+      ring.position.copyFrom(pos);
+      ring.position.y = 0.5;
+      const ringMat = new BABYLON.StandardMaterial("ringMat", scene);
+      ringMat.emissiveColor = BABYLON.Color3.Green();
+      ring.material = ringMat;
+
+      // Burst of green particles
+      const ps = new BABYLON.ParticleSystem("gadget-particles", 30, scene);
+      ps.particleTexture = new BABYLON.Texture("https://raw.githubusercontent.com/PatrickRyanMS/BabylonJS_VRExperience/master/assets/textures/flare.png", scene);
+      ps.emitter = pos.add(new BABYLON.Vector3(0, 1, 0));
+      ps.minSize = 0.2; ps.maxSize = 0.5;
+      ps.color1 = new BABYLON.Color4(0, 1, 0, 1);
+      ps.minLifeTime = 0.5; ps.maxLifeTime = 1.0;
+      ps.emitRate = 100;
+      ps.manualEmitCount = 30;
+      ps.start();
+
+      let scale = 1.0;
+      const obs = scene.onBeforeRenderObservable.add(() => {
+        scale += 0.2;
+        ring.scaling.set(scale, 1, scale);
+        ringMat.alpha = 1.0 - (scale / 10);
+        if (scale > 10) {
+          scene.onBeforeRenderObservable.remove(obs);
+          ring.dispose();
+        }
+      });
+    };
+
     const spawnProjectile = (pD: any) => {
       const pM = BABYLON.MeshBuilder.CreateSphere("p", { diameter: pD.isSuper ? 1.4 : 0.9 }, scene);
-      // Start slightly in front of player
       pM.position.set(pD.x, 1.8, pD.z);
       const pMat = new BABYLON.StandardMaterial("pm", scene);
       const col = pD.team === myTeam ? new BABYLON.Color3(0.3, 0.7, 1) : new BABYLON.Color3(1, 0.3, 0.3);
       pMat.emissiveColor = col;
       pM.material = pMat;
 
-      // Particle trail
       const ps = new BABYLON.ParticleSystem("ps", 20, scene);
       ps.particleTexture = new BABYLON.Texture("https://raw.githubusercontent.com/PatrickRyanMS/BabylonJS_VRExperience/master/assets/textures/flare.png", scene);
       ps.emitter = pM;
@@ -217,7 +247,10 @@ export default function GameScene({ brawlerId, mode }: GameSceneProps) {
       health = Math.min(brawlerConfig.health, health + 1200);
       setHudData(prev => ({ ...prev, gadgets, health }));
       socket.send(JSON.stringify({ type: "hit", victimId: socket.id, damage: -1200 }));
-      createImpact(player.container.position.add(new BABYLON.Vector3(0, 1, 0)), BABYLON.Color3.Green());
+
+      const pos = player.container.position.clone();
+      spawnGadgetEffect(pos);
+      socket.send(JSON.stringify({ type: "gadget", id: socket.id, x: pos.x, z: pos.z }));
     };
 
     const shoot = (isSuper = false) => {
@@ -249,7 +282,7 @@ export default function GameScene({ brawlerId, mode }: GameSceneProps) {
           isSuper
         };
 
-        spawnProjectile(pD); // Immediate local spawn
+        spawnProjectile(pD);
         socket.send(JSON.stringify({ type: "shoot", projectile: pD }));
       }
     };
@@ -330,6 +363,10 @@ export default function GameScene({ brawlerId, mode }: GameSceneProps) {
       } else if (data.type === "shoot") {
         if (data.projectile.ownerId !== socket.id) {
            spawnProjectile(data.projectile);
+        }
+      } else if (data.type === "gadget") {
+        if (data.id !== socket.id) {
+           spawnGadgetEffect(new BABYLON.Vector3(data.x, 0.5, data.z));
         }
       } else if (data.type === "healthUpdate" && data.id === socket.id) {
         health = data.health; setHudData(prev => ({ ...prev, health }));

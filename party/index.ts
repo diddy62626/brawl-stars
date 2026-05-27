@@ -106,7 +106,7 @@ export default class Server implements PartyServer {
           });
         }
       }
-    } else if (data.type === "shoot") {
+    } else if (data.type === "shoot" || data.type === "gadget") {
        this.party.broadcast(message);
     } else if (data.type === "hit") {
        const { victimId, damage, isSafe } = data;
@@ -126,7 +126,6 @@ export default class Server implements PartyServer {
            victim.health = 0;
            victim.isDead = true;
 
-           // Drop gems if in gem grab
            if (this.party.id.includes("gem_grab") && victim.gems > 0) {
               for(let i=0; i<victim.gems; i++) {
                 this.state.gems.push({ id: Math.random().toString(), x: victim.x + (Math.random()-0.5)*2, z: victim.z + (Math.random()-0.5)*2 });
