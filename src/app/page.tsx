@@ -9,14 +9,16 @@ export default function Home() {
     inGame: boolean;
     brawlerId: string;
     mode: string;
+    roomId: string;
   }>({
     inGame: false,
     brawlerId: "shellie",
     mode: "solo",
+    roomId: "",
   });
 
-  const handleStart = (brawlerId: string, mode: string) => {
-    setGameState({ inGame: true, brawlerId, mode });
+  const handleStart = (brawlerId: string, mode: string, roomId: string) => {
+    setGameState({ inGame: true, brawlerId, mode, roomId });
   };
 
   if (!gameState.inGame) {
@@ -25,7 +27,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between overflow-hidden">
-      <GameScene brawlerId={gameState.brawlerId} mode={gameState.mode} />
+      <GameScene brawlerId={gameState.brawlerId} mode={gameState.mode} roomId={gameState.roomId} />
     </main>
   );
 }
