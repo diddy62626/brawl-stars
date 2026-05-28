@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { BRAWLERS } from "@/game/brawlers";
-import { Trophy, Users, Shield, Zap, Search } from "lucide-react";
+import { Trophy, Users, Shield, Zap, Search, AlertCircle } from "lucide-react";
 import PartySocket from "partysocket";
 import { PARTYKIT_HOST } from "@/lib/env";
 
@@ -80,6 +80,22 @@ export default function Lobby({ onStart }: LobbyProps) {
              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{status}</span>
            </div>
         </div>
+
+        {status === "error" && (
+          <div className="bg-red-500/10 border-2 border-red-500/50 p-6 rounded-[2rem] mb-10 max-w-md text-center animate-in slide-in-from-bottom-4">
+             <div className="flex items-center justify-center gap-2 text-red-500 mb-2">
+                <AlertCircle size={24} />
+                <h3 className="font-black italic uppercase tracking-tight">Connection Error</h3>
+             </div>
+             <p className="text-sm text-slate-400 font-bold leading-relaxed mb-4">
+               Could not connect to PartyKit at:<br/>
+               <code className="text-white bg-black/40 px-2 py-0.5 rounded ml-1">{PARTYKIT_HOST}</code>
+             </p>
+             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">
+               Ensure the server is running or set <code className="text-slate-300">NEXT_PUBLIC_PARTYKIT_HOST</code> in Vercel.
+             </p>
+          </div>
+        )}
 
         <div className="text-3xl font-black bg-white/5 px-10 py-4 rounded-3xl border-2 border-white/10 tabular-nums">
           00:{matchInfo.timer.toString().padStart(2, '0')}
