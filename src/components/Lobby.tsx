@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { BRAWLERS } from "@/game/brawlers";
-import { Trophy, Users, Shield, Zap, Search, AlertCircle } from "lucide-react";
+import { Trophy, Users, Shield, Zap, Search, AlertCircle, Settings } from "lucide-react";
 import PartySocket from "partysocket";
 import { PARTYKIT_HOST } from "@/lib/env";
 
@@ -16,6 +16,8 @@ export default function Lobby({ onStart }: LobbyProps) {
   const [isMatching, setIsMatching] = useState(false);
   const [matchInfo, setMatchInfo] = useState({ count: 0, required: 0, timer: 60 });
   const [status, setStatus] = useState("disconnected");
+  const [customHost, setCustomHost] = useState(PARTYKIT_HOST);
+  const [showSettings, setShowSettings] = useState(false);
 
   const socketRef = useRef<PartySocket | null>(null);
 
@@ -23,7 +25,7 @@ export default function Lobby({ onStart }: LobbyProps) {
     if (isMatching) {
       const room = "matchmaking-" + selectedMode;
       const socket = new PartySocket({
-        host: PARTYKIT_HOST,
+        host: customHost,
         room: room,
       });
       socketRef.current = socket;
@@ -54,7 +56,7 @@ export default function Lobby({ onStart }: LobbyProps) {
         socketRef.current = null;
       };
     }
-  }, [isMatching, selectedMode, onStart, selectedBrawler]);
+  }, [isMatching, selectedMode, onStart, selectedBrawler, customHost]);
 
   const brawlers = Object.values(BRAWLERS);
   const current = BRAWLERS[selectedBrawler];
@@ -82,17 +84,13 @@ export default function Lobby({ onStart }: LobbyProps) {
         </div>
 
         {status === "error" && (
-          <div className="bg-red-500/10 border-2 border-red-500/50 p-6 rounded-[2rem] mb-10 max-w-md text-center animate-in slide-in-from-bottom-4">
+          <div className="bg-red-500/10 border-2 border-red-500/50 p-6 rounded-[2rem] mb-10 max-w-md text-center">
              <div className="flex items-center justify-center gap-2 text-red-500 mb-2">
                 <AlertCircle size={24} />
                 <h3 className="font-black italic uppercase tracking-tight">Connection Error</h3>
              </div>
-             <p className="text-sm text-slate-400 font-bold leading-relaxed mb-4">
-               Could not connect to PartyKit at:<br/>
-               <code className="text-white bg-black/40 px-2 py-0.5 rounded ml-1">{PARTYKIT_HOST}</code>
-             </p>
-             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">
-               Ensure the server is running or set <code className="text-slate-300">NEXT_PUBLIC_PARTYKIT_HOST</code> in Vercel.
+             <p className="text-xs text-slate-400 font-bold leading-relaxed mb-4">
+               Failed to connect to <code className="text-white">{customHost}</code>. Ensure your PartyKit server is running (`npx partykit dev`) or deploy it (`npx partykit deploy`).
              </p>
           </div>
         )}
@@ -120,15 +118,32 @@ export default function Lobby({ onStart }: LobbyProps) {
            </div>
            <span className="font-black text-2xl italic tracking-tighter text-amber-500">12,450</span>
         </div>
-        <h1 className="text-4xl font-black italic text-amber-400 tracking-tighter drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">BRAWL WEB</h1>
+        <h1 className="text-4xl font-black italic text-amber-400 tracking-tighter">BRAWL WEB</h1>
         <div className="flex items-center gap-5">
-           <span className="font-black opacity-50 tracking-widest text-sm">GUEST_429</span>
-           <div className="w-12 h-12 bg-blue-600 rounded-2xl border-4 border-white/10 shadow-lg rotate-3 hover:rotate-0 transition-transform cursor-pointer"></div>
+           <button onClick={() => setShowSettings(!showSettings)} className="text-white/40 hover:text-white transition-colors">
+              <Settings size={24} />
+           </button>
+           <div className="w-12 h-12 bg-blue-600 rounded-2xl border-4 border-white/10 shadow-lg"></div>
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col md:flex-row p-8 gap-8 overflow-hidden">
-        <div className="flex-1 flex flex-col items-center justify-center relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 rounded-[3rem] border-2 border-white/5 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden group">
+      <main className="flex-1 flex flex-col md:flex-row p-8 gap-8 overflow-hidden relative">
+        {showSettings && (
+           <div className="absolute top-0 right-8 z-50 bg-slate-900 border-2 border-white/10 p-6 rounded-3xl shadow-2xl w-80 animate-in slide-in-from-top-4">
+              <h3 className="font-black italic uppercase text-amber-500 text-sm mb-4">Server Settings</h3>
+              <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase opacity-40">PartyKit Host</label>
+                 <input
+                   type="text"
+                   value={customHost}
+                   onChange={(e) => setCustomHost(e.target.value)}
+                   className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-mono focus:outline-none focus:border-amber-500/50 text-white"
+                 />
+              </div>
+           </div>
+        )}
+
+        <div className="flex-1 flex flex-col items-center justify-center relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 rounded-[3rem] border-2 border-white/5 shadow-2xl overflow-hidden group">
           <div className="absolute top-10 left-10 flex flex-col gap-3">
              <div className="flex items-center gap-3 bg-black/50 px-6 py-3 rounded-2xl backdrop-blur-xl border border-white/5">
                 <Shield size={20} className="text-emerald-400" />
@@ -140,55 +155,37 @@ export default function Lobby({ onStart }: LobbyProps) {
              </div>
           </div>
 
-          <div className="w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] absolute pointer-events-none"></div>
-
-          <div
-            className="w-56 h-80 rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] transform group-hover:scale-105 transition-all duration-700 flex flex-col items-center justify-center p-6 border-4 border-white/10 relative overflow-hidden"
-            style={{ backgroundColor: current.color }}
-          >
-             <div className="w-24 h-24 bg-black/30 rounded-full mb-6 shadow-inner"></div>
-             <div className="w-40 h-48 bg-black/20 rounded-3xl shadow-inner"></div>
-             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+          <div className="w-56 h-80 rounded-[2.5rem] shadow-2xl transform group-hover:scale-105 transition-all duration-700 flex flex-col items-center justify-center p-6 border-4 border-white/10"
+               style={{ backgroundColor: current.color }}>
+             <div className="w-24 h-24 bg-black/30 rounded-full mb-6"></div>
+             <div className="w-40 h-48 bg-black/20 rounded-3xl"></div>
           </div>
 
-          <div className="mt-12 text-center relative z-10">
-            <h2 className="text-7xl font-black italic tracking-tighter uppercase mb-3 drop-shadow-2xl">{current.name}</h2>
-            <div className="flex gap-2 justify-center">
-              <span className="bg-amber-500/20 text-amber-500 px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-amber-500/30">Legendary</span>
-              <span className="bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-blue-500/30">Fighter</span>
-            </div>
+          <div className="mt-12 text-center">
+            <h2 className="text-7xl font-black italic tracking-tighter uppercase mb-3">{current.name}</h2>
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{current.description}</p>
           </div>
-
-          <button className="absolute bottom-10 right-10 bg-white/5 hover:bg-amber-500 hover:text-slate-950 p-6 rounded-[2rem] backdrop-blur-xl transition-all active:scale-90 border-2 border-white/5 hover:border-amber-400 shadow-2xl">
-             <Users size={32} />
-          </button>
         </div>
 
         <div className="w-full md:w-[450px] flex flex-col gap-8">
-          <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border-2 border-white/5 backdrop-blur-md flex-1 shadow-2xl">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black italic uppercase text-slate-500 text-sm tracking-[0.3em]">Selection</h3>
-                <span className="text-xs font-black bg-amber-500 text-slate-950 px-3 py-1 rounded-lg shadow-lg">20 / 20</span>
-             </div>
-             <div className="grid grid-cols-4 gap-3 overflow-y-auto max-h-[380px] pr-3 custom-scrollbar">
+          <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border-2 border-white/5 backdrop-blur-md flex-1 overflow-hidden flex flex-col shadow-xl">
+             <h3 className="font-black italic uppercase text-slate-500 text-sm tracking-[0.3em] mb-6">Brawlers</h3>
+             <div className="grid grid-cols-4 gap-3 overflow-y-auto pr-2 custom-scrollbar">
                 {brawlers.map(b => (
                    <button
                      key={b.id}
                      onClick={() => setSelectedBrawler(b.id)}
-                     className={`aspect-square rounded-2xl border-[4px] transition-all relative overflow-hidden ${
-                       selectedBrawler === b.id ? "border-amber-400 scale-105 shadow-[0_0_25px_rgba(245,158,11,0.5)]" : "border-transparent bg-slate-800/40 hover:bg-slate-800/80"
-                     }`}
+                     className={`aspect-square rounded-2xl border-[4px] transition-all ${selectedBrawler === b.id ? "border-amber-400 bg-amber-400/20" : "border-transparent bg-slate-800/40 hover:bg-slate-800/80"}`}
                      style={{ backgroundColor: selectedBrawler === b.id ? b.color : b.color + '66' }}
                    >
-                     <span className="text-[11px] font-black italic drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] relative z-10 leading-tight">{b.name}</span>
-                     {selectedBrawler === b.id && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
+                     <span className="text-[11px] font-black italic drop-shadow-md">{b.name}</span>
                    </button>
                 ))}
              </div>
           </div>
 
-          <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border-2 border-white/5 backdrop-blur-md shadow-2xl">
-             <h3 className="font-black italic uppercase text-slate-500 text-sm tracking-[0.3em] mb-6">Current Event</h3>
+          <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border-2 border-white/5 shadow-2xl">
+             <h3 className="font-black italic uppercase text-slate-500 text-sm tracking-[0.3em] mb-6">Event</h3>
              <div className="flex flex-col gap-4">
                 {[
                   { id: 'solo', name: 'Showdown', color: 'bg-emerald-500', desc: '10 Players' },
@@ -199,15 +196,11 @@ export default function Lobby({ onStart }: LobbyProps) {
                    <button
                      key={m.id}
                      onClick={() => setSelectedMode(m.id)}
-                     className={`flex items-center gap-6 p-4 rounded-[1.5rem] transition-all group ${
-                       selectedMode === m.id ? "bg-white/10 ring-2 ring-amber-500/50" : "hover:bg-white/5"
-                     }`}
+                     className={`flex items-center gap-6 p-4 rounded-[1.5rem] transition-all ${selectedMode === m.id ? "bg-white/10 ring-2 ring-amber-500/50" : "hover:bg-white/5"}`}
                    >
-                     <div className={`w-16 h-16 ${m.color} rounded-2xl shadow-2xl flex items-center justify-center font-black italic text-2xl group-hover:scale-110 transition-transform`}>
-                        {m.name[0]}
-                     </div>
+                     <div className={`w-14 h-14 ${m.color} rounded-2xl shadow-xl flex items-center justify-center font-black italic text-xl`}>{m.name[0]}</div>
                      <div className="flex flex-col text-left">
-                        <span className="font-black italic tracking-tighter text-2xl uppercase leading-none mb-1">{m.name}</span>
+                        <span className="font-black italic tracking-tighter text-2xl uppercase">{m.name}</span>
                         <span className="text-[10px] font-black tracking-widest uppercase opacity-40">{m.desc}</span>
                      </div>
                    </button>
@@ -217,7 +210,7 @@ export default function Lobby({ onStart }: LobbyProps) {
 
           <button
             onClick={() => setIsMatching(true)}
-            className="w-full py-8 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-5xl rounded-[2.5rem] shadow-[0_12px_0_rgb(180,83,9)] active:translate-y-2 active:shadow-none transition-all uppercase italic tracking-tighter ring-4 ring-black/20"
+            className="w-full py-8 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-5xl rounded-[2.5rem] shadow-[0_12px_0_rgb(180,83,9)] active:translate-y-2 active:shadow-none transition-all uppercase italic tracking-tighter"
           >
             Play
           </button>

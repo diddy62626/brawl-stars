@@ -28,7 +28,7 @@ export default class Server implements PartyServer {
   }
 
   async onConnect(connection: PartyConnection) {
-    console.log(`[${this.party.id}] Connection: ${connection.id}`);
+    console.log(`[${this.party.id}] Connection from ${connection.id}`);
 
     if (this.state.status === "ended") {
       this.state.status = "lobby";
@@ -36,8 +36,8 @@ export default class Server implements PartyServer {
       this.state.lobbyTimer = 60;
     }
 
-    const realPlayersCount = Object.values(this.state.players).filter(p => !p.isBot).length;
-    const team = realPlayersCount % 2;
+    const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
+    const team = realPlayers.length % 2;
 
     this.state.players[connection.id] = {
       id: connection.id, x: team === 0 ? -40 : 40, z: 0, rotation: 0,
@@ -45,10 +45,11 @@ export default class Server implements PartyServer {
       team, isDead: false
     };
 
-    // Ensure the heartbeat is active
-    await this.party.storage.setAlarm(Date.now() + 1000);
+    const alarm = await this.party.storage.getAlarm();
+    if (alarm === null) {
+      await this.party.storage.setAlarm(Date.now() + 100);
+    }
 
-    // Sync current lobby status to everyone
     this.broadcastLobbySync();
 
     if (this.state.status === "playing") {
@@ -57,34 +58,43 @@ export default class Server implements PartyServer {
   }
 
   async onAlarm() {
-    await this.tick();
-    // Reschedule if anyone is connected or game active
+    this.tick();
     const connections = [...this.party.getConnections()];
     if (connections.length > 0 || this.state.status === "playing") {
       await this.party.storage.setAlarm(Date.now() + 1000);
     }
   }
 
-  async tick() {
-    const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
+  lastSecond = 0;
+
+  tick() {
+    const now = Date.now();
+    const isSecond = now - this.lastSecond >= 1000;
 
     if (this.state.status === "lobby") {
+      const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
       if (realPlayers.length > 0) {
-        this.state.lobbyTimer -= 1;
-        const required = this.getRequiredPlayers();
-        if (this.state.lobbyTimer <= 0 || realPlayers.length >= required) {
-          this.startMatch();
-        } else {
-          this.broadcastLobbySync();
+        if (isSecond) {
+          this.state.lobbyTimer -= 1;
+          this.lastSecond = now;
+          const required = this.getRequiredPlayers();
+          if (this.state.lobbyTimer <= 0 || realPlayers.length >= required) {
+            this.startMatch();
+          } else {
+            this.broadcastLobbySync();
+          }
         }
       } else {
         this.state.lobbyTimer = 60;
       }
     } else if (this.state.status === "playing") {
-      this.state.timer -= 1;
-      if (this.state.timer <= 0) {
-        this.state.status = "ended";
-        this.party.broadcast(JSON.stringify({ type: "gameOver", winner: this.getWinner() }));
+      if (isSecond) {
+        this.state.timer -= 1;
+        this.lastSecond = now;
+        if (this.state.timer <= 0) {
+          this.state.status = "ended";
+          this.party.broadcast(JSON.stringify({ type: "gameOver", winner: this.getWinner() }));
+        }
       }
       this.updateBots();
     }
@@ -92,19 +102,31 @@ export default class Server implements PartyServer {
 
   updateBots() {
     const bots = Object.values(this.state.players).filter(p => p.isBot);
+    if (bots.length === 0) return;
+
     bots.forEach(bot => {
       if (bot.isDead) return;
-      // Basic bot behavior
-      if (Math.random() < 0.1) {
-        this.party.broadcast(JSON.stringify({
-          type: "shoot",
-          projectile: {
-            id: "bot_p_" + Math.random().toString(36).substr(2, 5),
-            ownerId: bot.id, team: bot.team, x: bot.x, z: bot.z,
-            vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6,
-            damage: 400, range: 15, isSuper: false
-          }
-        }));
+      let tx = 0, tz = 0;
+      if (this.party.id.toLowerCase().includes("heist")) {
+         tx = bot.team === 0 ? 60 : -60;
+      }
+      const dx = tx - bot.x, dz = tz - bot.z;
+      const d = Math.sqrt(dx*dx + dz*dz);
+      if (d > 10) {
+        bot.x += (dx/d) * 0.4;
+        bot.z += (dz/d) * 0.4;
+        bot.rotation = Math.atan2(dx, dz);
+      }
+      if (Math.random() < 0.05) {
+         this.party.broadcast(JSON.stringify({
+            type: "shoot",
+            projectile: {
+               id: "bot_p_" + Math.random().toString(36).substr(2, 5),
+               ownerId: bot.id, team: bot.team, x: bot.x, z: bot.z,
+               vx: Math.sin(bot.rotation) * 0.5, vz: Math.cos(bot.rotation) * 0.5,
+               damage: 400, range: 15, isSuper: false
+            }
+         }));
       }
     });
     this.party.broadcast(JSON.stringify({ type: "botUpdate", bots: this.state.players }));
@@ -112,14 +134,12 @@ export default class Server implements PartyServer {
 
   broadcastLobbySync() {
     const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
-    const required = this.getRequiredPlayers();
-    const msg = JSON.stringify({
+    this.party.broadcast(JSON.stringify({
       type: "lobbySync",
       count: realPlayers.length,
-      required,
+      required: this.getRequiredPlayers(),
       timer: Math.max(0, this.state.lobbyTimer)
-    });
-    this.party.broadcast(msg);
+    }));
   }
 
   getRequiredPlayers() {
@@ -134,7 +154,6 @@ export default class Server implements PartyServer {
     this.state.status = "playing";
     const required = this.getRequiredPlayers();
     const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
-
     for (let i = realPlayers.length; i < required; i++) {
        const botId = "bot_" + Math.random().toString(36).substr(2, 5);
        const team = i % 2;
@@ -163,37 +182,41 @@ export default class Server implements PartyServer {
   }
 
   onMessage(message: string, sender: PartyConnection) {
-    const data = JSON.parse(message);
-    if (data.type === "update" && this.state.players[sender.id]) {
-      Object.assign(this.state.players[sender.id], data.state);
-      this.party.broadcast(JSON.stringify({ type: "update", id: sender.id, state: data.state }), [sender.id]);
-    } else if (data.type === "shoot" || data.type === "gadget") {
-      this.party.broadcast(message, [sender.id]);
-    } else if (data.type === "hit") {
-      const { victimId, damage, isSafe, team } = data;
-      if (isSafe) {
-        this.state.safeHealth[team] -= damage;
-        this.party.broadcast(JSON.stringify({ type: "safeUpdate", team, health: this.state.safeHealth[team] }));
-        if (this.state.safeHealth[team] <= 0) {
-          this.state.status = "ended";
-          this.party.broadcast(JSON.stringify({ type: "gameOver", winner: 1 - team }));
+    try {
+      const data = JSON.parse(message);
+      if (data.type === "update" && this.state.players[sender.id]) {
+        Object.assign(this.state.players[sender.id], data.state);
+        this.party.broadcast(JSON.stringify({ type: "update", id: sender.id, state: data.state }), [sender.id]);
+      } else if (data.type === "shoot" || data.type === "gadget") {
+        this.party.broadcast(message, [sender.id]);
+      } else if (data.type === "hit") {
+        const { victimId, damage, isSafe, team } = data;
+        if (isSafe) {
+          this.state.safeHealth[team] -= damage;
+          this.party.broadcast(JSON.stringify({ type: "safeUpdate", team, health: this.state.safeHealth[team] }));
+          if (this.state.safeHealth[team] <= 0) {
+            this.state.status = "ended";
+            this.party.broadcast(JSON.stringify({ type: "gameOver", winner: 1 - team }));
+          }
+        } else if (this.state.players[victimId]) {
+          const victim = this.state.players[victimId];
+          victim.health -= damage;
+          if (victim.health <= 0) {
+            victim.health = 0; victim.isDead = true;
+            this.party.broadcast(JSON.stringify({ type: "death", id: victimId }));
+            setTimeout(() => {
+              if (this.state.players[victimId]) {
+                this.state.players[victimId].health = this.state.players[victimId].maxHealth;
+                this.state.players[victimId].isDead = false;
+                this.party.broadcast(JSON.stringify({ type: "respawn", id: victimId, state: this.state.players[victimId] }));
+              }
+            }, 5000);
+          }
+          this.party.broadcast(JSON.stringify({ type: "healthUpdate", id: victimId, health: victim.health }));
         }
-      } else if (this.state.players[victimId]) {
-        const victim = this.state.players[victimId];
-        victim.health -= damage;
-        if (victim.health <= 0) {
-          victim.health = 0; victim.isDead = true;
-          this.party.broadcast(JSON.stringify({ type: "death", id: victimId }));
-          setTimeout(() => {
-            if (this.state.players[victimId]) {
-              this.state.players[victimId].health = this.state.players[victimId].maxHealth;
-              this.state.players[victimId].isDead = false;
-              this.party.broadcast(JSON.stringify({ type: "respawn", id: victimId, state: this.state.players[victimId] }));
-            }
-          }, 5000);
-        }
-        this.party.broadcast(JSON.stringify({ type: "healthUpdate", id: victimId, health: victim.health }));
       }
+    } catch (e) {
+      console.error("Server Message Parse Error", e);
     }
   }
 }

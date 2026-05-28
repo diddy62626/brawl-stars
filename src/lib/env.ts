@@ -1,5 +1,4 @@
-export const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || (
-  typeof window !== "undefined"
-    ? (window.location.hostname.match(/localhost|127\.0\.0\.1/) ? "localhost:1999" : "brawl-stars-party.your-username.partykit.dev")
-    : "localhost:1999"
-);
+// Environment variable for production, fallback for local dev.
+export const PARTYKIT_HOST =
+  process.env.NEXT_PUBLIC_PARTYKIT_HOST ||
+  "localhost:1999";
