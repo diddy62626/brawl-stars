@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import Lobby from "@/components/Lobby";
 import GameScene from "@/components/GameScene";
 
@@ -17,9 +17,9 @@ export default function Home() {
     roomId: "",
   });
 
-  const handleStart = (brawlerId: string, mode: string, roomId: string) => {
+  const handleStart = useCallback((brawlerId: string, mode: string, roomId: string) => {
     setGameState({ inGame: true, brawlerId, mode, roomId });
-  };
+  }, []);
 
   if (!gameState.inGame) {
     return <Lobby onStart={handleStart} />;

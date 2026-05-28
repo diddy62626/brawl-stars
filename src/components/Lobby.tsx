@@ -4,8 +4,7 @@ import React, { useState, useEffect } from "react";
 import { BRAWLERS } from "@/game/brawlers";
 import { Trophy, Users, Shield, Zap, Search } from "lucide-react";
 import PartySocket from "partysocket";
-
-const PARTYKIT_HOST = "localhost:1999";
+import { PARTYKIT_HOST } from "@/lib/env";
 
 interface LobbyProps {
   onStart: (brawlerId: string, mode: string, roomId: string) => void;
@@ -20,19 +19,25 @@ export default function Lobby({ onStart }: LobbyProps) {
   useEffect(() => {
     let socket: PartySocket | null = null;
     if (isMatching) {
-      // Pool all players searching for the same mode into the same matchmaking room
       socket = new PartySocket({
         host: PARTYKIT_HOST,
         room: "matchmaking-" + selectedMode,
       });
 
       socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "lobbySync") {
-          setMatchInfo({ count: data.count, required: data.required, timer: data.timer });
-        } else if (data.type === "matchStart") {
-          // Use the matchmaker room as the game room for this session
-          onStart(selectedBrawler, selectedMode, "matchmaking-" + selectedMode);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "lobbySync") {
+            setMatchInfo({
+              count: data.count || 0,
+              required: data.required || 0,
+              timer: typeof data.timer === 'number' ? data.timer : 60
+            });
+          } else if (data.type === "matchStart") {
+            onStart(selectedBrawler, selectedMode, "matchmaking-" + selectedMode);
+          }
+        } catch (e) {
+          console.error("Failed to parse message", e);
         }
       };
     }

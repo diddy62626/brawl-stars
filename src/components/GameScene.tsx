@@ -5,8 +5,7 @@ import * as BABYLON from "@babylonjs/core";
 import PartySocket from "partysocket";
 import { BRAWLERS } from "@/game/brawlers";
 import { MAPS, generateRandomMap } from "@/game/maps";
-
-const PARTYKIT_HOST = "localhost:1999";
+import { PARTYKIT_HOST } from "@/lib/env";
 
 interface GameSceneProps {
   brawlerId: string;
@@ -301,7 +300,7 @@ export default function GameScene({ brawlerId, mode, roomId }: GameSceneProps) {
           <div className="flex gap-2.5 flex-grow mb-2">
             {Array.from({ length: hudData.maxAmmo }).map((_, i) => (
               <div key={i} className="flex-1 h-7 bg-black/80 rounded-full border-[5px] border-white overflow-hidden shadow-2xl">
-                <div className={`h-full bg-orange-500 ${i < hudData.ammo ? "w-full" : "w-0"} transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)]`} />
+                <div className={`h-full bg-orange-400 ${i < hudData.ammo ? "w-full" : "w-0"} transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)]`} />
               </div>
             ))}
           </div>
