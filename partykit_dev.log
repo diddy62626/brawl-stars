@@ -1,0 +1,65 @@
+🎈 PartyKit v0.0.115
+---------------------
+Build succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Ready on http://0.0.0.0:1999
+
+[2K[1A[2K[G[pk:inf] - http://127.0.0.1:1999
+
+[2K[1A[2K[G[pk:inf] - http://192.168.0.2:1999
+
+[2K[1A[2K[G[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mfetch error Error: No onRequest handler[0m
+
+      at Object.fetch (file:///app/party/index.ts:2985:19)
+
+
+
+[2K[1A[2K[G[pk:inf] GET /party/matchmaking-solo 500 Internal Server Error (10ms)
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
+
+[2K[1A[2K[GBuild succeeded, starting server...
+
+[2K[1A[2K[G[pk:inf] Updated and ready on http://0.0.0.0:1999
