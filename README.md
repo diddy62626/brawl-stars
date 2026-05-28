@@ -2,27 +2,33 @@
 
 A 3D Multiplayer Brawl Stars clone built with Next.js, Babylon.js, and PartyKit.
 
+## Getting Started
+
+1. **Install dependencies**:
+   ``bash
+   npm install
+   ```
+
+2. **Start the game (Lobby + Multiplayer Server)**:
+   ``bash
+   npm run dev
+   ```
+   This command starts both the Next.js frontend and the PartyKit backend automatically.
+
+3. **Open the game**:
+   Navigate to [http://localhost:3000](http://localhost:3000).
+
 ## Deployment
 
 ### 1. Deploy PartyKit Server
-Run the following command to deploy your multiplayer backend:
-```bash
-npx partykit deploy
-```
-Take note of your deployment URL (e.g., `brawl-stars-party.your-username.partykit.dev`).
+   `bash
+   np| partykit deploy
+   ``` (note: use npx if not installed globally)
+   Take note of your deployment URL.
 
 ### 2. Deploy Frontend to Vercel
-1. Push this repository to GitHub.
-2. Connect your repository to Vercel.
-3. Set the following environment variable in the Vercel dashboard:
-   - `NEXT_PUBLIC_PARTYKIT_HOST`: Your PartyKit deployment URL (without `https://`).
-
-## Local Development
-
-1. Install dependencies: `npm install`
-2. Start PartyKit locally: `npx partykit dev`
-3. Start Next.js locally: `npm run dev`
-4. Open `http://localhost:3000`
+   Set the following environment variable in Vercel:
+   - `NEXT_PUBLIC_PARTYKIT_HOST`: Your PartyKit deployment URL (e.g., `brawl-stars-party.your-username.partykit.dev`).
 
 ## Controls
 - **WASD**: Move

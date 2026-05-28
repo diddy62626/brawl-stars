@@ -1,9 +1,11 @@
 {
-  "name": "temp-app",
+  "name": "brawl-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev:next": "next dev",
+    "dev:party": "npx partykit dev",
+    "dev": "concurrently \"npm run dev:next\" \"npm run dev:party\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -23,6 +25,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
