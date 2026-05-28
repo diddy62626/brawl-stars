@@ -8,7 +8,8 @@
     "dev": "concurrently \"npm run dev:next\" \"npm run dev:party\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy": "npx partykit deploy"
   },
   "dependencies": {
     "@babylonjs/core": "^9.9.1",
