@@ -28,7 +28,7 @@ export default class Server implements PartyServer {
   }
 
   async onConnect(connection: PartyConnection) {
-    console.log(`[${this.party.id}] Connection from ${connection.id}`);
+    console.log(`[${this.party.id}] Connection: ${connection.id}`);
 
     if (this.state.status === "ended") {
       this.state.status = "lobby";
@@ -36,8 +36,8 @@ export default class Server implements PartyServer {
       this.state.lobbyTimer = 60;
     }
 
-    const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
-    const team = realPlayers.length % 2;
+    const realPlayersCount = Object.values(this.state.players).filter(p => !p.isBot).length;
+    const team = realPlayersCount % 2;
 
     this.state.players[connection.id] = {
       id: connection.id, x: team === 0 ? -40 : 40, z: 0, rotation: 0,
@@ -45,12 +45,10 @@ export default class Server implements PartyServer {
       team, isDead: false
     };
 
-    // Use Alarms for the tick loop
-    const alarm = await this.party.storage.getAlarm();
-    if (alarm === null) {
-      await this.party.storage.setAlarm(Date.now() + 100); // Fast start
-    }
+    // Ensure the heartbeat is active
+    await this.party.storage.setAlarm(Date.now() + 1000);
 
+    // Sync current lobby status to everyone
     this.broadcastLobbySync();
 
     if (this.state.status === "playing") {
@@ -59,44 +57,34 @@ export default class Server implements PartyServer {
   }
 
   async onAlarm() {
-    this.tick();
-    if (Object.keys(this.state.players).length > 0) {
-      // Re-schedule alarm (100ms for bot updates, 1s for timer logic)
-      await this.party.storage.setAlarm(Date.now() + 100);
+    await this.tick();
+    // Reschedule if anyone is connected or game active
+    const connections = [...this.party.getConnections()];
+    if (connections.length > 0 || this.state.status === "playing") {
+      await this.party.storage.setAlarm(Date.now() + 1000);
     }
   }
 
-  lastTimerUpdate = 0;
-
-  tick() {
-    const now = Date.now();
-    const isTimerTick = now - this.lastTimerUpdate >= 1000;
+  async tick() {
+    const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
 
     if (this.state.status === "lobby") {
-      const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
       if (realPlayers.length > 0) {
-        if (isTimerTick) {
-          this.state.lobbyTimer -= 1;
-          this.lastTimerUpdate = now;
-
-          const required = this.getRequiredPlayers();
-          if (this.state.lobbyTimer <= 0 || realPlayers.length >= required) {
-            this.startMatch();
-          } else {
-            this.broadcastLobbySync();
-          }
+        this.state.lobbyTimer -= 1;
+        const required = this.getRequiredPlayers();
+        if (this.state.lobbyTimer <= 0 || realPlayers.length >= required) {
+          this.startMatch();
+        } else {
+          this.broadcastLobbySync();
         }
       } else {
         this.state.lobbyTimer = 60;
       }
     } else if (this.state.status === "playing") {
-      if (isTimerTick) {
-        this.state.timer -= 1;
-        this.lastTimerUpdate = now;
-        if (this.state.timer <= 0) {
-          this.state.status = "ended";
-          this.party.broadcast(JSON.stringify({ type: "gameOver", winner: this.getWinner() }));
-        }
+      this.state.timer -= 1;
+      if (this.state.timer <= 0) {
+        this.state.status = "ended";
+        this.party.broadcast(JSON.stringify({ type: "gameOver", winner: this.getWinner() }));
       }
       this.updateBots();
     }
@@ -104,32 +92,19 @@ export default class Server implements PartyServer {
 
   updateBots() {
     const bots = Object.values(this.state.players).filter(p => p.isBot);
-    if (bots.length === 0) return;
-
     bots.forEach(bot => {
       if (bot.isDead) return;
-      let targetX = 0, targetZ = 0;
-      if (this.party.id.toLowerCase().includes("heist")) {
-         targetX = bot.team === 0 ? 60 : -60;
-      }
-      const dx = targetX - bot.x;
-      const dz = targetZ - bot.z;
-      const dist = Math.sqrt(dx*dx + dz*dz);
-      if (dist > 5) {
-        bot.x += (dx / dist) * 0.4;
-        bot.z += (dz / dist) * 0.4;
-        bot.rotation = Math.atan2(dx, dz);
-      }
-      if (Math.random() < 0.05) {
-         this.party.broadcast(JSON.stringify({
-            type: "shoot",
-            projectile: {
-               id: "bot_p_" + Math.random().toString(36).substr(2, 5),
-               ownerId: bot.id, team: bot.team, x: bot.x, z: bot.z,
-               vx: Math.sin(bot.rotation) * 0.5, vz: Math.cos(bot.rotation) * 0.5,
-               damage: 400, range: 12, isSuper: false
-            }
-         }));
+      // Basic bot behavior
+      if (Math.random() < 0.1) {
+        this.party.broadcast(JSON.stringify({
+          type: "shoot",
+          projectile: {
+            id: "bot_p_" + Math.random().toString(36).substr(2, 5),
+            ownerId: bot.id, team: bot.team, x: bot.x, z: bot.z,
+            vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6,
+            damage: 400, range: 15, isSuper: false
+          }
+        }));
       }
     });
     this.party.broadcast(JSON.stringify({ type: "botUpdate", bots: this.state.players }));
@@ -137,10 +112,11 @@ export default class Server implements PartyServer {
 
   broadcastLobbySync() {
     const realPlayers = Object.values(this.state.players).filter(p => !p.isBot);
+    const required = this.getRequiredPlayers();
     const msg = JSON.stringify({
       type: "lobbySync",
       count: realPlayers.length,
-      required: this.getRequiredPlayers(),
+      required,
       timer: Math.max(0, this.state.lobbyTimer)
     });
     this.party.broadcast(msg);

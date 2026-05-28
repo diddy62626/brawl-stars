@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BRAWLERS } from "@/game/brawlers";
 import { Trophy, Users, Shield, Zap, Search } from "lucide-react";
 import PartySocket from "partysocket";
@@ -15,14 +15,22 @@ export default function Lobby({ onStart }: LobbyProps) {
   const [selectedMode, setSelectedMode] = useState("solo");
   const [isMatching, setIsMatching] = useState(false);
   const [matchInfo, setMatchInfo] = useState({ count: 0, required: 0, timer: 60 });
+  const [status, setStatus] = useState("disconnected");
+
+  const socketRef = useRef<PartySocket | null>(null);
 
   useEffect(() => {
-    let socket: PartySocket | null = null;
     if (isMatching) {
-      socket = new PartySocket({
+      const room = "matchmaking-" + selectedMode;
+      const socket = new PartySocket({
         host: PARTYKIT_HOST,
-        room: "matchmaking-" + selectedMode,
+        room: room,
       });
+      socketRef.current = socket;
+
+      socket.onopen = () => setStatus("connected");
+      socket.onclose = () => setStatus("disconnected");
+      socket.onerror = () => setStatus("error");
 
       socket.onmessage = (event) => {
         try {
@@ -34,17 +42,18 @@ export default function Lobby({ onStart }: LobbyProps) {
               timer: typeof data.timer === 'number' ? data.timer : 60
             });
           } else if (data.type === "matchStart") {
-            onStart(selectedBrawler, selectedMode, "matchmaking-" + selectedMode);
+            onStart(selectedBrawler, selectedMode, room);
           }
         } catch (e) {
-          console.error("Failed to parse message", e);
+          console.error("Lobby parse error", e);
         }
       };
-    }
 
-    return () => {
-      if (socket) socket.close();
-    };
+      return () => {
+        socket.close();
+        socketRef.current = null;
+      };
+    }
   }, [isMatching, selectedMode, onStart, selectedBrawler]);
 
   const brawlers = Object.values(BRAWLERS);
@@ -61,12 +70,21 @@ export default function Lobby({ onStart }: LobbyProps) {
            </div>
         </div>
         <h2 className="text-5xl font-black italic mb-4 uppercase tracking-tighter text-amber-400">Matchmaking</h2>
-        <p className="text-2xl text-slate-400 font-bold mb-10 tracking-wide">
-          Searching for players: <span className="text-white">{matchInfo.count} / {matchInfo.required}</span>
-        </p>
+
+        <div className="flex flex-col items-center gap-2 mb-10">
+           <p className="text-2xl text-slate-400 font-bold tracking-wide">
+             Players: <span className="text-white">{matchInfo.count} / {matchInfo.required}</span>
+           </p>
+           <div className="flex items-center gap-2">
+             <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+             <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{status}</span>
+           </div>
+        </div>
+
         <div className="text-3xl font-black bg-white/5 px-10 py-4 rounded-3xl border-2 border-white/10 tabular-nums">
           00:{matchInfo.timer.toString().padStart(2, '0')}
         </div>
+
         <button
           onClick={() => setIsMatching(false)}
           className="mt-16 text-slate-500 hover:text-white font-black uppercase tracking-[0.2em] text-sm transition-all hover:scale-105 active:scale-95"
